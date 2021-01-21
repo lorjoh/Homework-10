@@ -1,4 +1,4 @@
-const Employee = require("./lib/Employee");
+
 const Manager = require("./lib/Manager");
 const Engineer = require("./lib/Engineer");
 const Intern = require("./lib/Intern");
@@ -13,165 +13,92 @@ const outputPath = path.join(OUTPUT_DIR, "team.html");
 
 const render = require("./lib/htmlRenderer");
 
-function initApp() {
-    loadHtml();
-    getTeamInfo();
-    render;
-}
-
-const promptArr = [{
-    type: "input",
-    message: "What is your name?",
-    name: "name"
-}, {
-    type: "input",
-    message: "What is your ID?",
-    name: "id"
-}, {
-    type: "input",
-    message: "What is your email?",
-    name: "email"
-}, {
-    type: "list",
-    message: "What is your role",
-    choices: ["Manager", "Engineer", "Intern"],
-    name: "role"
-}];
-
-function getTeamInfo() {
-    inquirer.prompt(promptArr)
-        .then(function ({ name, role, id, email, roleInfo, moreMembers }) {
-
-            // let roleInfo = "";
-            if (role === "Engineer") {
-                roleInfo = "GitHub username";
-            } else if (role === "Intern") {
-                roleInfo = "school";
-            } else {
-                roleInfo = "officeNumber";
-            }
-
-            let newMember;
-            if (role === "Engineer") {
-                newMember = new Engineer(name, id, email, roleInfo);
-            } else if (role === "Intern") {
-                newMember = new Intern(name, id, email, roleInfo);
-            } else {
-                newMember = new Manager(name, id, email, roleInfo);
-            }
-
-            employees.push(newMember);
-            addHtml(newMember)
-                .then(function () {
-                    if (moreMembers === "yes") {
-                        getTeamInfo();
-                    } else {
-                        endHtml();
-                        render;
-                    }
-                });
-        });
-}
-
-const beginHtml = () => {
-    `<!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-        <title>Team Profile</title>
-    </head>
-    <body>
-        <nav class="navbar navbar-dark bg-dark mb-5">
-            <span class="navbar-brand mb-0 h1 w-100 text-center">Team Profile</span>
-        </nav>
-        <div class="container">
-            <div class="row">`;
-            htmlArr.push(beginHtml);
-    fs.writeFile("./output/team.html", htmlArr.join(""), function (err) {
-        if (err) {
-            throw err;
-        }
-    });
-    console.log("begin");
-}
-render;
-function loadHtml(member) {
-    return new Promise(function (resolve, reject) {
-        const name = member.getName();
-        const role = member.getRole();
-        const id = member.getId();
-        const email = member.getEmail();
-
-        let data = "";
-
-        if (role === "Engineer") {
-            const gitHub = member.getGithub();
-            data = `<div class="col-6">
-            <div class="card mx-auto mb-3" style="width: 18rem">
-            <h5 class="card-header">${name}<br /><br />Engineer</h5>
-            <ul class="list-group list-group-flush">
-                <li class="list-group-item">ID: ${id}</li>
-                <li class="list-group-item">Email Address: ${email}</li>
-                <li class="list-group-item">GitHub: ${gitHub}</li>
-            </ul>
-            </div>
-        </div>`;
-        }
-        else if (role === "Intern") {
-            const school = member.getSchool();
-            data = `<div class="col-6">
-            <div class="card mx-auto mb-3" style="width: 18rem">
-            <h5 class="card-header">${name}<br /><br />Intern</h5>
-            <ul class="list-group list-group-flush">
-                <li class="list-group-item">ID: ${id}</li>
-                <li class="list-group-item">Email Address: ${email}</li>
-                <li class="list-group-item">School: ${school}</li>
-            </ul>
-            </div>
-        </div>`;
-        }
-        else {
-            const officePhone = member.getOfficeNumber();
-            data = `<div class="col-6">
-            <div class="card mx-auto mb-3" style="width: 18rem">
-            <h5 class="card-header">${name}<br /><br />Manager</h5>
-            <ul class="list-group list-group-flush">
-                <li class="list-group-item">ID: ${id}</li>
-                <li class="list-group-item">Email Address: ${email}</li>
-                <li class="list-group-item">Office Phone: ${officeNumber}</li>
-            </ul>
-            </div>
-        </div>`
-        }
-        console.log(" member added");
-
-        fs.appendFile("./output/team.html", function (err, data) {
-            if (err) {
-                return reject(err);
-            };
-            return resolve(data);
-        });
+// create array of prompts
+const promptArr = [
+    {
+        type: "input",
+        message: "What is your name?",
+        name: "name"
+    }, {
+        type: "input",
+        message: "What is your ID?",
+        name: "id"
+    }, {
+        type: "input",
+        message: "What is your email?",
+        name: "email"
+    }, {
+        type: "list",
+        message: "What is your role",
+        choices: ["Manager", "Engineer", "Intern"],
+        name: "role"
     }
-    );
+]
+
+// initialize the inquirer.prompt for the starting prompt
+async function initApp() {
+    const { newEmployee } = await inquirer.prompt({
+        type: 'confirm',
+        message: 'Would you like to add this employee?',
+        name: 'newEmployee'
+    })
+
+    if (newEmployee) {
+        initEmployee();
+    } else {
+        if (employees.length > 0) {
+            if (fs.existsSync(OUTPUT_DIR)) {
+                return fs.writeFileSync(outputPath, render(employees),)
+            } else {
+                return fs.mkdir(OUTPUT_DIR, err => {
+                    if (err) throw err;
+
+                    return fs.writeFileSync(outputPath, render(employees))
+                })
+            }
+        }
+    }
 }
 
-const endHtml = () => {` 
-</div>     
-</body>
-</html>`;
-htmlArr.push(endHtml);
-    fs.appendFile("./output/team.html", htmlArr.join(""), function (err) {
-        if (err) {
-            throw err;
-        };
-        console.log("it is finished");
-    });
+// initializing the employee function using inquirer
+// set-up corresponding message/info for each employee
+const initEmployee = async () => {
+    const { role, name, id, email } = await inquirer.prompt(promptArr);
 
+    switch (role) {
+        case 'Manager':
+            const { officeNumber } = await inquirer.prompt({
+                message: 'Office Number?',
+                name: 'officeNumber'
+            })
+            employees.push(new Manager(name, id, email, officeNumber))
+            initApp()
+            break;
+
+        case 'Intern':
+            const { school } = await inquirer.prompt({
+                message: 'School?',
+                name: 'school'
+            })
+            employees.push(new Intern(name, id, email, school))
+            initApp()
+            break;
+
+        case 'Engineer':
+            const { github } = await inquirer.prompt({
+                message: 'GitHub?',
+                name: 'github'
+            })
+            employees.push(new Engineer(name, id, email, github))
+            initApp()
+            break;
+
+        default:
+            console.log("No Default")
+    }
 }
 initApp();
+
 // Write code to use inquirer to gather information about the development team members,
 // and to create objects for each team member (using the correct classes as blueprints!)
 
